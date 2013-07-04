@@ -1,0 +1,3 @@
+Fri Nov 16 13:43:28 2012	Starting
+Fri Nov 16 13:43:28 2012	Starting XMODEM session...
+Fri Nov 16 13:43:31 2012	Failed to connect on /dev/ttyUSB0

@@ -1,0 +1,229 @@
+
+Memory Configuration
+
+Name             Origin             Length             Attributes
+*default*        0x00000000         0xffffffff
+
+Linker script and memory map
+
+LOAD /opt/arm-2009q3/bin/../lib/gcc/arm-none-eabi/4.4.1/libgcc.a
+Address of section .text set to 0x0
+                0x00000000                . = 0x0
+                0x00000000                . = ALIGN (0x4)
+
+.text           0x00000000      0xb64
+ start.o(.text)
+ .text          0x00000000      0x160 start.o
+                0x00000000                _start
+                0x00000040                _TEXT_BASE
+ *(.text)
+ .text          0x00000160      0x414 main.o
+                0x00000160                putc
+                0x00000194                puts
+                0x000001bc                putc_hex
+                0x000001f0                dump
+                0x00000258                dump_int
+                0x00000280                ec
+                0x0000029c                hang
+                0x000002b0                main
+ .text          0x00000574      0x2f4 kirkwood_nand.o
+                0x00000574                kw_config_gpio
+                0x000005a8                kirkwood_mpp_conf
+                0x00000678                nand_readb
+                0x000006b8                kw_nand_select_chip
+                0x000006d0                nand_command
+ .text          0x00000868       0xe4 timer.o
+                0x00000868                reset_timer_masked
+                0x0000089c                reset_timer
+                0x000008a0                __udelay
+                0x00000910                timer_init
+ .text          0x0000094c       0xc8 _udivsi3.o
+                0x0000094c                __udivsi3
+                0x0000094c                __aeabi_uidiv
+                0x000009e4                __aeabi_uidivmod
+                0x000009fc                __aeabi_idivmod
+ *fill*         0x00000a14        0xc 00
+ .text          0x00000a20      0x140 _divsi3.o
+                0x00000a20                __aeabi_idiv
+                0x00000a20                __divsi3
+ .text          0x00000b60        0x4 div0.o
+                0x00000b60                __div0
+
+.glue_7         0x00000b64        0x0
+ .glue_7        0x00000000        0x0 linker stubs
+
+.glue_7t        0x00000b64        0x0
+ .glue_7t       0x00000000        0x0 linker stubs
+
+.vfp11_veneer   0x00000b64        0x0
+ .vfp11_veneer  0x00000000        0x0 linker stubs
+
+.v4_bx          0x00000b64        0x0
+ .v4_bx         0x00000000        0x0 linker stubs
+                0x00000b64                . = ALIGN (0x4)
+
+.rodata         0x00000b64       0x98
+ *(SORT(.rodata*))
+ .rodata        0x00000b64       0x10 main.o
+ .rodata.str1.1
+                0x00000b74       0x88 main.o
+
+.dynsym         0x00000bfc       0x30
+ .dynsym        0x00000bfc       0x30 start.o
+
+.hash           0x00000c2c       0x18
+ .hash          0x00000c2c       0x18 start.o
+
+.rel.dyn        0x00000c44       0xb8
+ .rel.got       0x00000000        0x0 start.o
+ .rel.plt       0x00000000        0x0 start.o
+ .rel.text      0x00000c44       0xb8 start.o
+                0x00000cfc                . = ALIGN (0x4)
+
+.data           0x00000cfc       0x50
+ *(.data)
+ .data          0x00000cfc        0x0 start.o
+ .data          0x00000cfc       0x4c main.o
+ .data          0x00000d48        0x0 kirkwood_nand.o
+ .data          0x00000d48        0x4 timer.o
+                0x00000d48                kwtmr_regs
+ .data          0x00000d4c        0x0 _udivsi3.o
+ .data          0x00000d4c        0x0 _divsi3.o
+ .data          0x00000d4c        0x0 div0.o
+
+.got            0x00000d4c        0x0
+ .got           0x00000000        0x0 start.o
+
+.got.plt        0x00000d4c        0xc
+ .got.plt       0x00000d4c        0xc start.o
+                0x00000d4c                _GLOBAL_OFFSET_TABLE_
+
+.bss            0x00000d58        0x8
+ .bss           0x00000d58        0x0 start.o
+ .bss           0x00000d58        0x0 main.o
+ .bss           0x00000d58        0x0 kirkwood_nand.o
+ .bss           0x00000d58        0x8 timer.o
+                0x00000d58                lastdec
+                0x00000d5c                timestamp
+ .bss           0x00000d60        0x0 _udivsi3.o
+ .bss           0x00000d60        0x0 _divsi3.o
+ .bss           0x00000d60        0x0 div0.o
+
+.dynbss         0x00000d60        0x0
+ .dynbss        0x00000000        0x0 start.o
+
+/DISCARD/
+ *(.dynstr*)
+ *(.dynamic*)
+ *(.plt*)
+ *(.interp*)
+ *(.gnu*)
+LOAD start.o
+LOAD main.o
+LOAD kirkwood_nand.o
+LOAD timer.o
+LOAD _udivsi3.o
+LOAD _divsi3.o
+LOAD div0.o
+OUTPUT(loader elf32-littlearm)
+
+.ARM.attributes
+                0x00000000       0x27
+ .ARM.attributes
+                0x00000000       0x1b start.o
+ .ARM.attributes
+                0x0000001b       0x2b main.o
+ .ARM.attributes
+                0x00000046       0x2b kirkwood_nand.o
+ .ARM.attributes
+                0x00000071       0x2b timer.o
+ .ARM.attributes
+                0x0000009c       0x1b _udivsi3.o
+ .ARM.attributes
+                0x000000b7       0x1b _divsi3.o
+ .ARM.attributes
+                0x000000d2       0x2b div0.o
+
+.comment        0x00000000       0xa8
+ .comment       0x00000000       0x2a main.o
+ .comment       0x0000002a       0x2a kirkwood_nand.o
+ .comment       0x00000054       0x2a timer.o
+ .comment       0x0000007e       0x2a div0.o
+
+.debug_line     0x00000000      0x34b
+ .debug_line    0x00000000       0x4e start.o
+ .debug_line    0x0000004e       0xdd main.o
+ .debug_line    0x0000012b       0xb0 kirkwood_nand.o
+ .debug_line    0x000001db       0x67 timer.o
+ .debug_line    0x00000242       0x6b _udivsi3.o
+ .debug_line    0x000002ad       0x66 _divsi3.o
+ .debug_line    0x00000313       0x38 div0.o
+
+.debug_info     0x00000000      0xfed
+ .debug_info    0x00000000       0x3e start.o
+ .debug_info    0x0000003e      0x7a2 main.o
+ .debug_info    0x000007e0      0x47c kirkwood_nand.o
+ .debug_info    0x00000c5c      0x2d7 timer.o
+ .debug_info    0x00000f33       0x41 _udivsi3.o
+ .debug_info    0x00000f74       0x40 _divsi3.o
+ .debug_info    0x00000fb4       0x39 div0.o
+
+.debug_abbrev   0x00000000      0x526
+ .debug_abbrev  0x00000000       0x14 start.o
+ .debug_abbrev  0x00000014      0x198 main.o
+ .debug_abbrev  0x000001ac      0x1ae kirkwood_nand.o
+ .debug_abbrev  0x0000035a      0x17b timer.o
+ .debug_abbrev  0x000004d5       0x14 _udivsi3.o
+ .debug_abbrev  0x000004e9       0x14 _divsi3.o
+ .debug_abbrev  0x000004fd       0x29 div0.o
+
+.debug_aranges  0x00000000       0xe0
+ .debug_aranges
+                0x00000000       0x20 start.o
+ .debug_aranges
+                0x00000020       0x20 main.o
+ .debug_aranges
+                0x00000040       0x20 kirkwood_nand.o
+ .debug_aranges
+                0x00000060       0x20 timer.o
+ .debug_aranges
+                0x00000080       0x20 _udivsi3.o
+ .debug_aranges
+                0x000000a0       0x20 _divsi3.o
+ .debug_aranges
+                0x000000c0       0x20 div0.o
+
+.debug_frame    0x00000000      0x220
+ .debug_frame   0x00000000      0x100 main.o
+ .debug_frame   0x00000100       0x98 kirkwood_nand.o
+ .debug_frame   0x00000198       0x68 timer.o
+ .debug_frame   0x00000200       0x20 div0.o
+
+.debug_loc      0x00000000      0x498
+ .debug_loc     0x00000000      0x1c7 main.o
+ .debug_loc     0x000001c7      0x203 kirkwood_nand.o
+ .debug_loc     0x000003ca       0xce timer.o
+
+.debug_pubnames
+                0x00000000      0x16e
+ .debug_pubnames
+                0x00000000       0x60 main.o
+ .debug_pubnames
+                0x00000060       0x73 kirkwood_nand.o
+ .debug_pubnames
+                0x000000d3       0x7e timer.o
+ .debug_pubnames
+                0x00000151       0x1d div0.o
+
+.debug_str      0x00000000      0x493
+ .debug_str     0x00000000      0x26e main.o
+                                0x2cd (size before relaxing)
+ .debug_str     0x0000026e      0x16a kirkwood_nand.o
+                                0x1eb (size before relaxing)
+ .debug_str     0x000003d8       0xad timer.o
+                                0x12d (size before relaxing)
+ .debug_str     0x00000485        0xe div0.o
+                                 0x27 (size before relaxing)
+
+.debug_ranges   0x00000000       0x38
+ .debug_ranges  0x00000000       0x38 kirkwood_nand.o

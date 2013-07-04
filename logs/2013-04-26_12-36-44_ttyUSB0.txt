@@ -1,0 +1,5 @@
+Fri Apr 26 12:36:44 2013	Starting
+Fri Apr 26 12:36:44 2013	Starting XMODEM session...
+Fri Apr 26 12:36:47 2013	XMODEM session started
+Fri Apr 26 12:36:47 2013	Sending ./u-boot_TC_uart.kwb
+Fri Apr 26 12:37:12 2013	XMODEM transfer			PASS

@@ -1,0 +1,5 @@
+Fri Nov 16 13:43:35 2012	Starting
+Fri Nov 16 13:43:35 2012	Starting XMODEM session...
+Fri Nov 16 13:43:36 2012	XMODEM session started
+Fri Nov 16 13:43:36 2012	Sending ./loader.kwb
+Fri Nov 16 13:43:36 2012	XMODEM transfer			PASS
