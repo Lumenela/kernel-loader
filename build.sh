@@ -1,2 +1,2 @@
-export CROSS_COMPILE=/opt/arm-2009q3/bin/arm-none-eabi-
+export CROSS_COMPILE=/home/user/Practice/arm-2009q3/bin/arm-none-eabi-
 make

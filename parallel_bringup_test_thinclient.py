@@ -421,7 +421,7 @@ class xmodem_load(Thread):
 	    self.sendcmd("\r")
 	    if not self.waitfor("root"):
 	      self.report("Login\t\t\tFAIL")
-	      return Falsese
+	      return False
 
 	self.sendcmd("pname\r")
       	if not self.vers_compar():

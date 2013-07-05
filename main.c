@@ -87,6 +87,9 @@ putc_hex(char c)
 }
 
 void
+dump_int(u32 value);
+
+void
 dump(int ptr, int len)
 {
 	if (!len || len < 0)
@@ -95,6 +98,10 @@ dump(int ptr, int len)
 	unsigned long i;
 	for (i = 0; i < len; i++) {
 		unsigned char *pc= (unsigned char *)ptr;
+		if (i == 0) {
+			dump_int(pc[i]);
+			putc('\r');
+		}
 		putc_hex(pc[i]);
 		putc(' ');
 		if (!((i + 1) % 16) && i)
@@ -198,21 +205,25 @@ main(void)
 
 	/* Reading image header */
 #define HEADER_MAGIC 0x56190527
+#define IMG_START_PAGE 0x200
+#define IMG_START_BLOCK 0
 
-	nand_command(NAND_CMD_READ0, 0x0, 0);
+	nand_command(NAND_CMD_READ0, 0, IMG_START_PAGE);
 	for (int i = 0; i < 64; i++)
 		((char *)LOAD_ADDRESS)[i] = nand_readb();
 
 	puts("Checking header magic...");
 	if (((u32 *)LOAD_ADDRESS)[0] != HEADER_MAGIC) {
-		puts("fail\n");
+		puts("\n");
+		dump_int(((u32 *)LOAD_ADDRESS)[0]);
+		puts("\nFailed!\n");
 		dump(LOAD_ADDRESS, 64);
 		hang();
 	}
 	puts("done\n\n");
-
+	dump(LOAD_ADDRESS, 64);
 	puts((char *)LOAD_ADDRESS + 32); putc('\n');
-	int load_size = ((int *)LOAD_ADDRESS)[3];
+	u32 load_size = ((u32 *)LOAD_ADDRESS)[3];
 	load_size = ec(load_size);
 	puts("\tImage size:\t\t");
 	dump_int((u32)load_size);
@@ -230,14 +241,10 @@ main(void)
 
 	/* Reading data into memory  */
 #define PAGE_SIZE 2 * 1024
-#define PAGES_PER_BLOCK 64
-
-#define IMG_START_PAGE 0
-#define IMG_START_BLOCK 0
 
 	u32 ptr = 0;
-	for (int page_num = IMG_START_PAGE; page_num < 1536/*PAGES_PER_BLOCK*/; page_num++) {
-		nand_command(NAND_CMD_READ0, 0, /*(block_num << 7) |*/ page_num);
+	for (int page_num = IMG_START_PAGE; page_num < 1342 + IMG_START_PAGE; page_num++) {
+		nand_command(NAND_CMD_READ0, 0, page_num);
 				
 		int i = 0;
 		if (page_num == IMG_START_PAGE) {
