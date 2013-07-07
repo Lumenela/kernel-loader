@@ -33,13 +33,24 @@ static u32 atags[]= {
 	0,
 
 	/* ATAG_CMDLINE */
-	8,
+	13,
 	ATAG_CMDLINE,
 	0x736e6f63,	// console=ttyS0,115200
 	0x3d656c6f,
 	0x53797474,
 	0x31312c30,
 	0x30303235,
+	0x69627520,	//  ubi.mtd=3 root=ubi0:rootfs rootfstype=ubifs
+	0x64746D2E,
+	0x7220333D,
+	0x3D746F6F,
+	0x30696275,
+	0x6F6F723A,
+	0x20736674,
+	0x746F6F72,
+	0x79747366,
+	0x753D6570,
+	0x73666962,
 	0,
 
 	/* ATAG_NONE */
