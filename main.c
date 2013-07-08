@@ -33,7 +33,7 @@ static u32 atags[]= {
 	0,
 
 	/* ATAG_CMDLINE */
-	13,
+	19,
 	ATAG_CMDLINE,
 	0x736e6f63,	// console=ttyS0,115200
 	0x3d656c6f,
