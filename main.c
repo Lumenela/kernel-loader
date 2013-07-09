@@ -4,6 +4,7 @@
 #include <kirkwood.h>
 #include <ns16550.h>
 #include <nand.h>
+#include "ecc.h"
 
 #define NS16550_CLK									CONFIG_SYS_TCLK
 static NS16550_t com_port = (NS16550_t)KW_UART0_BASE;
@@ -108,6 +109,7 @@ dump(int ptr, int len)
 	
 	unsigned long i;
 	for (i = 0; i < len; i++) {
+		putc('\t');
 		unsigned char *pc= (unsigned char *)ptr;
 		if (i == 0) {
 			dump_int(pc[i]);
@@ -233,7 +235,7 @@ main(void)
 	}
 	puts("done\n\n");
 	dump(LOAD_ADDRESS, 64);
-	puts((char *)LOAD_ADDRESS + 32); putc('\n');
+	puts((char *)LOAD_ADDRESS + 32); puts("\n\n");
 	u32 load_size = ((u32 *)LOAD_ADDRESS)[3];
 	load_size = ec(load_size);
 	puts("\tImage size:\t\t");
@@ -250,22 +252,47 @@ main(void)
 	dump_int((u32)ep_addr);
 	putc('\n');
 
-	/* Reading data into memory  */
 #define PAGE_SIZE 2 * 1024
+#define PAGES_COUNT 1342
+#define OOB_OFFSET 0x2000000
+#define OOB_SIZE 64
+
+	/* Reading data into memory  */
 
 	u32 ptr = 0;
-	for (int page_num = IMG_START_PAGE; page_num < 1342 + IMG_START_PAGE; page_num++) {
+
+	u32 oob = load_addr + OOB_OFFSET;
+	u32 oob_ptr = 0;
+
+	/* Reading one page from NAND at a time */
+	for (int page_num = IMG_START_PAGE; page_num < IMG_START_PAGE + PAGES_COUNT; page_num++) {
 		nand_command(NAND_CMD_READ0, 0, page_num);
-				
+
 		int i = 0;
+
+		/* Skipping read image header */
 		if (page_num == IMG_START_PAGE) {
 			for (; i < 64; i++)
 				nand_readb();
 		}
+		
+		/* Reading image page data */
 		for (; i < PAGE_SIZE; i++)
 			((char *)load_addr)[ptr++] = nand_readb();
-				
-//		WATCHDOG_RESET();
+
+		/* Reading image page OOB block */
+		for (; i < PAGE_SIZE + OOB_SIZE; i++)
+			((char *)oob)[oob_ptr++] = nand_readb();
+
+		dump(oob, 64);
+		return;
+
+		/* Verifying ECC code */
+		if (!verify_ecc(((char *)load_addr)[ptr - PAGE_SIZE], oob)) {
+			print_ecc_failure(page_num, oob);
+			for(;;);
+			return;
+		}
 	}
 
 	void (*kernel_entry)(int, int, void *);
