@@ -16,33 +16,41 @@ void print_ecc_failure(u32 number, u32 oob) {
 	puts("ECC checking failed!\n");
 	puts("2 or more bits wrong.\n\n");
 
-	puts("\tCorrupted page number: ");
+	puts("Page number: ");
 	dump_int(number);
 
-	puts("\n\tPage OOB block:\n\n");
+	puts("\nOOB block:\n\n");
 	dump(oob, 64);
 }
 
+#define BYTE_SIZE 8
+#define SECTOR_SIZE 256
+
 /**
- * Partitions the whole byte.
+ * Partitions the byte or
+ * whole block of bytes.
  *
- * ECCo is the most right 3 bits,
- * ECCe is right before the ECCo.
- * 
- * ECCe = result >> 3;
- * ECCo = result & 0x7; 
+ * 1) Partitioning one byte.
+ *    ECCo is the most right 3 bits,
+ *    ECCe is right before the ECCo.
+ *    ECCe = result >> 3;
+ *    ECCo = result & 0x7;
+ *
+ * 2) Partitioning one block.
+ *    2 most left bytes are zeroed.
+ *    Result is: EEEEEEEEOOOOOOOO
  */
-char partition_byte(char byte) {
+u32 partition_block(int size, u32* bytes) {
 
 	char re = 0, ro = 0;
 	char even, odd, val;
 
 	int i, j, k;
-	for (i = 4; i >= 1; i >>= 1) {
+	for (i = size / 2; i >= 1; i >>= 1) {
 		even = odd = 0;
-		for (j = 0; j < 8 / i; j++) {
+		for (j = 0; j < size / i; j++) {
 			for (k = i * j; k < i * (j + 1); k++) {
-				val = (byte << (7 - k)) >> 7;
+				val = (bytes[k / 32] << (k % 32)) >> 31;
 				if (j % 2 == 0) {
 					even ^= val;	
 				} else {
@@ -54,32 +62,18 @@ char partition_byte(char byte) {
 		ro = (ro << 1) | odd;
 	}
 
-	return (re << 3) | ro;
+	return (u32)((ro << (size == BYTE_SIZE ? 3 : 8)) | re);
 }
 
-/**
- * Partitions the whole block (byte parity).
- * Minor two bytes of result: EEEEEEEEOOOOOOOO
- */
-u32 partition_block(u32* bytes) {
-	/*
-	 * The goal is to fill two lowest bytes,
-	 * each with 8 bits of 128, 64,... 2, 1
-	 * XOR-ed subsequences of block bits.
-	 */
-	return 0;
-}
-
-#define SECTOR_SIZE 256
-#define ECC_FAIL 0xFFFFFFFF
-#define ECC_OK 0
+#define ECC_OK	 0x0
+#define ECC_FAIL 0x7FF
 
 /**
  * Calculates and verifies ECC code.
  */
 int verify_ecc(u32 page, u32 oob) {
 	/*
-	 * ECC even and odd 12-bit values are shifted
+	 * ECC even and odd 11-bit values are shifted
 	 * to the most left position in the u32 vars.
 	 */
 	u32 old_ecc = 0, new_ecc = 0;
@@ -96,8 +90,9 @@ int verify_ecc(u32 page, u32 oob) {
 	 * every sector's byte parity and cumulative
 	 * bit indexes parities in block accordingly.
 	 */
-	u32 byte_parity[] = {0, 0, 0, 0, 0, 0, 0, 0};
-	char bit_parity	  =  0;
+	static u32 byte_parity[] = {0, 0, 0, 0, 0, 0, 0, 0};
+	static u32 single_byte[] = {0};
+	char bit_parity	= 0;
 
 	int i, j, k;
 	char byte, b;
@@ -120,13 +115,13 @@ int verify_ecc(u32 page, u32 oob) {
 			/* Getting single byte value. */
 			byte = ((char*)page)[i * SECTOR_SIZE + j];
 
-			/* Recalculating byte and bit parities. */
-			for (k = 7; k >= 0; k--) {
-				/* Bit parity. */
-				bit_parity ^= byte;
+			/* Bit parity. */
+			bit_parity ^= byte;
 
+			/* Recalculating byte parities. */
+			for (k = 7; k >= 0; k--) {
 				/* Cumulative byte parity. */
-				b += (byte << (7 - k)) >> 7;
+				b ^= (byte << (7 - k)) >> 7;
 			}
 
 			/* Shifting the byte parity left. */
@@ -134,20 +129,18 @@ int verify_ecc(u32 page, u32 oob) {
 			byte_parity[j / 32] |= b % 2;
 		}
 
-		/* Partitioning and masking all the parities. */
-		new_ecc = minors = majors = 0;
-
 		/*
 		 * Writing minor parts of the value (bit-wise).
 		 * E is ECCe, O is ECCo. Then minors = 00EEEOOO
 		 */
-		minors |= partition_byte(bit_parity);
+		single_byte[0] = bit_parity << 24;
+		minors = partition_block(BYTE_SIZE, single_byte);
 
 		/*
 		 * Writing major parts of the value (byte-wise).
 		 * The returned u32 is half-complete with data.
 		 */
-		majors |= partition_block(byte_parity);
+		majors = partition_block(SECTOR_SIZE, byte_parity);
 
 		/*
 		 * Combining majors and minors into single value.
@@ -156,6 +149,7 @@ int verify_ecc(u32 page, u32 oob) {
 		 */
 		new_ecc = ((majors >> 8)   << 24) | ((minors >> 3)  << 21) |
 			  ((majors & 0xFF) << 13) | ((minors & 0x7) << 18);
+		new_ecc |= 0x300;
 
 		/* Read the old ECC value from OOB. */
 		old_ecc = 0;

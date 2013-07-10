@@ -109,7 +109,6 @@ dump(int ptr, int len)
 	
 	unsigned long i;
 	for (i = 0; i < len; i++) {
-		putc('\t');
 		unsigned char *pc= (unsigned char *)ptr;
 		if (i == 0) {
 			dump_int(pc[i]);
@@ -200,7 +199,7 @@ main(void)
 	}
 	putc('\n');
 
-#define TIMEOUT 5
+#define TIMEOUT 1
 	/* Display counter */
 	for (int i = 0; i < TIMEOUT; i++) {
 		putc('\r'); puts("Start after: "); putc('0' + TIMEOUT - i);
@@ -277,18 +276,19 @@ main(void)
 		}
 		
 		/* Reading image page data */
-		for (; i < PAGE_SIZE; i++)
+		for (; i < PAGE_SIZE; i++) {
 			((char *)load_addr)[ptr++] = nand_readb();
+		}
 
 		/* Reading image page OOB block */
-		for (; i < PAGE_SIZE + OOB_SIZE; i++)
+		for (oob_ptr = 0; i < PAGE_SIZE + OOB_SIZE; i++) {
 			((char *)oob)[oob_ptr++] = nand_readb();
+		}
 
-		dump(oob, 64);
-		return;
+		puts("\nChecking ECC...\n\n");
 
 		/* Verifying ECC code */
-		if (!verify_ecc(((char *)load_addr)[ptr - PAGE_SIZE], oob)) {
+		if (!verify_ecc(load_addr + ptr - PAGE_SIZE, oob)) {
 			print_ecc_failure(page_num, oob);
 			for(;;);
 			return;
