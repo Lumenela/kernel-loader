@@ -71,7 +71,7 @@ u32 partition_block(u32* bytes) {
 }
 
 #define SECTOR_SIZE 256
-#define ECC_FAIL 0xFFFFFFFF
+#define ECC_FAIL 0x7FF
 #define ECC_OK 0
 
 /**
@@ -79,7 +79,7 @@ u32 partition_block(u32* bytes) {
  */
 int verify_ecc(u32 page, u32 oob) {
 	/*
-	 * ECC even and odd 12-bit values are shifted
+	 * ECC even and odd 11-bit values are shifted
 	 * to the most left position in the u32 vars.
 	 */
 	u32 old_ecc = 0, new_ecc = 0;
