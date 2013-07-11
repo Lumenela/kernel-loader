@@ -13,7 +13,7 @@ void dump_int(u32 value);
  */
 void print_ecc_failure(u32 number, u32 oob) {
 
-	puts("ECC checking failed!\n");
+	puts("\n\nECC checking failed!\n");
 	puts("2 or more bits wrong.\n\n");
 
 	puts("Page number: ");
@@ -23,133 +23,130 @@ void print_ecc_failure(u32 number, u32 oob) {
 	dump(oob, 64);
 }
 
-#define BYTE_SIZE 8
-#define SECTOR_SIZE 256
-
 /**
- * Partitions the byte or
- * whole block of bytes.
- *
- * 1) Partitioning one byte.
- *    ECCo is the most right 3 bits,
- *    ECCe is right before the ECCo.
- *    ECCe = result >> 3;
- *    ECCo = result & 0x7;
- *
- * 2) Partitioning one block.
- *    2 most left bytes are zeroed.
- *    Result is: EEEEEEEEOOOOOOOO
+ * Calculates byte parity.
  */
-u32 partition_block(int size, u32* bytes) {
+u32 parity(char byte) {
 
-	char re = 0, ro = 0;
-	char even, odd, val;
+	u32 parity = 0;
 
-	int i, j, k;
-	for (i = size / 2; i >= 1; i >>= 1) {
-		even = odd = 0;
-		for (j = 0; j < size / i; j++) {
-			for (k = i * j; k < i * (j + 1); k++) {
-				val = (bytes[k / 32] << (k % 32)) >> 31;
-				if (j % 2 == 0) {
-					even ^= val;	
-				} else {
-					odd ^= val;
-				}
-			}
-		}
-		re = (re << 1) | even;
-		ro = (ro << 1) | odd;
+	int i;
+	for (i = 7; i >= 0; i--) {
+		parity ^= (byte >> i) & 0x01;
 	}
 
-	return (u32)((ro << (size == BYTE_SIZE ? 3 : 8)) | re);
+	return parity;
 }
 
-#define ECC_OK	 0x0
-#define ECC_FAIL 0x7FF
+/**
+ * Ones in the value.
+ */
+int count_ones(u32 val) {
+
+	int count = 0;
+
+	int i;
+	for (i = 0; i < 22; i++) {
+		count += (val >> (10 + i)) & 0x01;
+	}
+
+	return count;
+}
+
+/*
+ * Pre-calculated 256-way 1 byte column parity
+ */
+static const char nand_ecc_precalc_table[] = {
+	0x00, 0x55, 0x56, 0x03, 0x59, 0x0c, 0x0f, 0x5a, 0x5a, 0x0f, 0x0c, 0x59, 0x03, 0x56, 0x55, 0x00,
+	0x65, 0x30, 0x33, 0x66, 0x3c, 0x69, 0x6a, 0x3f, 0x3f, 0x6a, 0x69, 0x3c, 0x66, 0x33, 0x30, 0x65,
+	0x66, 0x33, 0x30, 0x65, 0x3f, 0x6a, 0x69, 0x3c, 0x3c, 0x69, 0x6a, 0x3f, 0x65, 0x30, 0x33, 0x66,
+	0x03, 0x56, 0x55, 0x00, 0x5a, 0x0f, 0x0c, 0x59, 0x59, 0x0c, 0x0f, 0x5a, 0x00, 0x55, 0x56, 0x03,
+	0x69, 0x3c, 0x3f, 0x6a, 0x30, 0x65, 0x66, 0x33, 0x33, 0x66, 0x65, 0x30, 0x6a, 0x3f, 0x3c, 0x69,
+	0x0c, 0x59, 0x5a, 0x0f, 0x55, 0x00, 0x03, 0x56, 0x56, 0x03, 0x00, 0x55, 0x0f, 0x5a, 0x59, 0x0c,
+	0x0f, 0x5a, 0x59, 0x0c, 0x56, 0x03, 0x00, 0x55, 0x55, 0x00, 0x03, 0x56, 0x0c, 0x59, 0x5a, 0x0f,
+	0x6a, 0x3f, 0x3c, 0x69, 0x33, 0x66, 0x65, 0x30, 0x30, 0x65, 0x66, 0x33, 0x69, 0x3c, 0x3f, 0x6a,
+	0x6a, 0x3f, 0x3c, 0x69, 0x33, 0x66, 0x65, 0x30, 0x30, 0x65, 0x66, 0x33, 0x69, 0x3c, 0x3f, 0x6a,
+	0x0f, 0x5a, 0x59, 0x0c, 0x56, 0x03, 0x00, 0x55, 0x55, 0x00, 0x03, 0x56, 0x0c, 0x59, 0x5a, 0x0f,
+	0x0c, 0x59, 0x5a, 0x0f, 0x55, 0x00, 0x03, 0x56, 0x56, 0x03, 0x00, 0x55, 0x0f, 0x5a, 0x59, 0x0c,
+	0x69, 0x3c, 0x3f, 0x6a, 0x30, 0x65, 0x66, 0x33, 0x33, 0x66, 0x65, 0x30, 0x6a, 0x3f, 0x3c, 0x69,
+	0x03, 0x56, 0x55, 0x00, 0x5a, 0x0f, 0x0c, 0x59, 0x59, 0x0c, 0x0f, 0x5a, 0x00, 0x55, 0x56, 0x03,
+	0x66, 0x33, 0x30, 0x65, 0x3f, 0x6a, 0x69, 0x3c, 0x3c, 0x69, 0x6a, 0x3f, 0x65, 0x30, 0x33, 0x66,
+	0x65, 0x30, 0x33, 0x66, 0x3c, 0x69, 0x6a, 0x3f, 0x3f, 0x6a, 0x69, 0x3c, 0x66, 0x33, 0x30, 0x65,
+	0x00, 0x55, 0x56, 0x03, 0x59, 0x0c, 0x0f, 0x5a, 0x5a, 0x0f, 0x0c, 0x59, 0x03, 0x56, 0x55, 0x00
+};
+
+#define SECTOR_SIZE 256
 
 /**
  * Calculates and verifies ECC code.
  */
-int verify_ecc(u32 page, u32 oob) {
-	/*
-	 * ECC even and odd 11-bit values are shifted
-	 * to the most left position in the u32 vars.
-	 */
-	u32 old_ecc = 0, new_ecc = 0;
+int verify_ecc(u32 page, u32 oob, int start_page) {
 
-	/*
-	 * The final result by XOR-ed ECC values
-	 * and the wrong byte and bit addresses.
-	 */
-	u32 result = 0, address = 0,
-	    minors = 0, majors	= 0;
+	/* Old ECC, U-Boot ECC and result. */
+	u32 old_ecc, uboot_ecc, result;
 
-	/*
-	 * Byte-wise and bit-wise are containers for
-	 * every sector's byte parity and cumulative
-	 * bit indexes parities in block accordingly.
-	 */
-	static u32 byte_parity[] = {0, 0, 0, 0, 0, 0, 0, 0};
-	static u32 single_byte[] = {0};
-	char bit_parity	= 0;
+	int i, j, p;
+	char byte;
 
-	int i, j, k;
-	char byte, b;
+	char ecc0, ecc1, ecc2;
+	char idx, reg1, reg2, reg3, tmp1, tmp2;
 
 	/* For each 256-bytes sector. */
 	for (i = 0; i < 8; i++) {
 
-		/* Reset parities. */
-		bit_parity = 0;
-		for (j = 0; j < 8; j++) {
-			byte_parity[j] = 0;
-		}
+		/* Initialize variables */
+		reg1 = reg2 = reg3 = 0;
 
-		/* Reading the sector byte-wise. */
-		for (j = 0; j < SECTOR_SIZE; j++) {			
-
-			/* Reset current byte parity. */			
-			b = 0;
-
-			/* Getting single byte value. */
-			byte = ((char*)page)[i * SECTOR_SIZE + j];
-
-			/* Bit parity. */
-			bit_parity ^= byte;
-
-			/* Recalculating byte parities. */
-			for (k = 7; k >= 0; k--) {
-				/* Cumulative byte parity. */
-				b ^= (byte << (7 - k)) >> 7;
+		/* Build up column parity */
+		for(p = 0; p < 256; p++) {
+			/* Get CP0 - CP5 from table */
+			if (start_page && p < 64 && i == 0) {
+				idx = nand_ecc_precalc_table[((char*)(oob - 64))[p]];
+			} else {
+				if (!start_page) {
+					idx = nand_ecc_precalc_table[((char*)page)[i * SECTOR_SIZE + p]];
+				} else {
+					if (i == 0) {
+						idx = nand_ecc_precalc_table[((char*)page)[p - 64]];
+					} else {
+						idx = nand_ecc_precalc_table[((char*)page)[
+							(i - 1) * SECTOR_SIZE + 192 + p]];
+					}
+				}
 			}
+			reg1 ^= (idx & 0x3f);
 
-			/* Shifting the byte parity left. */
-			byte_parity[j / 32] <<= 1;
-			byte_parity[j / 32] |= b % 2;
+			/* All bit XOR = 1 ? */
+			if (idx & 0x40) {
+				reg3 ^=   (char) p;
+				reg2 ^= ~((char) p);
+			}
 		}
 
-		/*
-		 * Writing minor parts of the value (bit-wise).
-		 * E is ECCe, O is ECCo. Then minors = 00EEEOOO
-		 */
-		single_byte[0] = bit_parity << 24;
-		minors = partition_block(BYTE_SIZE, single_byte);
+		/* Create non-inverted ECC code from line parity */
+		tmp1  = (reg3 & 0x80) >> 0; /* B7 -> B7 */
+		tmp1 |= (reg2 & 0x80) >> 1; /* B7 -> B6 */
+		tmp1 |= (reg3 & 0x40) >> 1; /* B6 -> B5 */
+		tmp1 |= (reg2 & 0x40) >> 2; /* B6 -> B4 */
+		tmp1 |= (reg3 & 0x20) >> 2; /* B5 -> B3 */
+		tmp1 |= (reg2 & 0x20) >> 3; /* B5 -> B2 */
+		tmp1 |= (reg3 & 0x10) >> 3; /* B4 -> B1 */
+		tmp1 |= (reg2 & 0x10) >> 4; /* B4 -> B0 */
 
-		/*
-		 * Writing major parts of the value (byte-wise).
-		 * The returned u32 is half-complete with data.
-		 */
-		majors = partition_block(SECTOR_SIZE, byte_parity);
+		tmp2  = (reg3 & 0x08) << 4; /* B3 -> B7 */
+		tmp2 |= (reg2 & 0x08) << 3; /* B3 -> B6 */
+		tmp2 |= (reg3 & 0x04) << 3; /* B2 -> B5 */
+		tmp2 |= (reg2 & 0x04) << 2; /* B2 -> B4 */
+		tmp2 |= (reg3 & 0x02) << 2; /* B1 -> B3 */
+		tmp2 |= (reg2 & 0x02) << 1; /* B1 -> B2 */
+		tmp2 |= (reg3 & 0x01) << 1; /* B0 -> B1 */
+		tmp2 |= (reg2 & 0x01) << 0; /* B7 -> B0 */
 
-		/*
-		 * Combining majors and minors into single value.
-		 * The new_ecc value will be: 11 bits of ECCe, 11
-		 * bits of ECCo, then 10 zeroed bits.
-		 */
-		new_ecc = ((majors >> 8)   << 24) | ((minors >> 3)  << 21) |
-			  ((majors & 0xFF) << 13) | ((minors & 0x7) << 18);
-		new_ecc |= 0x300;
+		/* Calculate final ECC code */
+		ecc0 = ~tmp1;
+		ecc1 = ~tmp2;
+		ecc2 = ((~reg1) << 2) | 0x03;
+		uboot_ecc = (ecc0 << 24) | (ecc1 << 16) | (ecc2 << 8);
 
 		/* Read the old ECC value from OOB. */
 		old_ecc = 0;
@@ -158,31 +155,36 @@ int verify_ecc(u32 page, u32 oob) {
 		}
 		
 		/* Calculate the final checking result. */
-		result = (old_ecc >> 21) ^ ((old_ecc << 11) >> 21) ^
-		    	 (new_ecc >> 21) ^ ((new_ecc << 11) >> 21);
+		result = old_ecc ^ uboot_ecc;
 
 		/* No errors, OK. */
-		if (result == ECC_OK) {
+		if (result == 0x0) {
 			continue;
-		} else /* Single error. */
-		if (result == ECC_FAIL) {
+		} else /* Correction. */
+		if (count_ones(result) == 11) {
+			
+			char byte_addr, bit_addr;
 
-			char byte_addr = 0, bit_addr = 0;
+			/* Calculate byte address. */
+			byte_addr = (result >> 25) & 0x01 |
+				    (result >> 26) & 0x02 |
+				    (result >> 27) & 0x04 |
+				    (result >> 28) & 0x08 |
+				    (result >> 13) & 0x10 |
+				    (result >> 14) & 0x20 |
+				    (result >> 15) & 0x40 |
+				    (result >> 16) & 0x80 ;
 
-			/* Get wrong byte and bit address. */
-			address = ((old_ecc << 11) >> 21) ^
-				  ((new_ecc << 11) >> 21);
+			/* Calculate bit address. */
+			bit_addr = (result >> 11) & 0x01 |
+				   (result >> 12) & 0x02 |
+				   (result >> 13) & 0x04 ;
 
-			/* Flip inverted bit. */
-			byte_addr = (char) (address >> 3);
-			bit_addr  = (char) (address & 0x7);
+			/* Correct the wrong bit. */
 			((char*)page)[i * SECTOR_SIZE + byte_addr] =
 				((char*)page)[i * SECTOR_SIZE + byte_addr] ^ (1 << bit_addr);
 
-			puts("Flipped inverted bit : ");
-			dump_int(address); putc('\n');
-
-		} else { /* 2 or more errors. */
+		} else { /* Fail. */
 			return 0;
 		}
 	}

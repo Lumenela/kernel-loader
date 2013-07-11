@@ -263,16 +263,20 @@ main(void)
 	u32 oob = load_addr + OOB_OFFSET;
 	u32 oob_ptr = 0;
 
+	puts("\nChecking ECC codes...\n");
+
 	/* Reading one page from NAND at a time */
 	for (int page_num = IMG_START_PAGE; page_num < IMG_START_PAGE + PAGES_COUNT; page_num++) {
 		nand_command(NAND_CMD_READ0, 0, page_num);
 
-		int i = 0;
+		int i = 0, p = 0;
 
 		/* Skipping read image header */
 		if (page_num == IMG_START_PAGE) {
-			for (; i < 64; i++)
-				nand_readb();
+			for (; i < 64; i++) {
+				/* Reading before OOB. */
+				((char *)(oob - 64))[p++] = nand_readb();
+			}
 		}
 		
 		/* Reading image page data */
@@ -285,15 +289,20 @@ main(void)
 			((char *)oob)[oob_ptr++] = nand_readb();
 		}
 
-		puts("\nChecking ECC...\n\n");
-
 		/* Verifying ECC code */
-		if (!verify_ecc(load_addr + ptr - PAGE_SIZE, oob)) {
+		if (!verify_ecc(load_addr + ptr - PAGE_SIZE + (page_num == IMG_START_PAGE ? 64 : 0),
+			oob, page_num == IMG_START_PAGE)) {
 			print_ecc_failure(page_num, oob);
 			for(;;);
 			return;
 		}
+
+		putc('\r');
+		puts("Page ");
+		dump_int(page_num - IMG_START_PAGE);
+		puts(" correct");
 	}
+	puts("\nECC checking complete.\n\n");
 
 	void (*kernel_entry)(int, int, void *);
 	kernel_entry = (void (*)(int, int, void *))ep_addr;
