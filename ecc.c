@@ -145,9 +145,27 @@ int verify_ecc(u32 page, u32 oob, int start_page) {
 				   (result >> 12) & 0x02 |
 				   (result >> 13) & 0x04 ;
 
-			/* Correct the wrong bit. */
-			((char*)page)[i * SECTOR_SIZE + byte_addr] =
-				((char*)page)[i * SECTOR_SIZE + byte_addr] ^ (1 << bit_addr);
+			/* Correct the wrong bit in the byte. */
+			if (!start_page) {
+				((char*)page)[i * SECTOR_SIZE + byte_addr] =
+					((char*)page)[i * SECTOR_SIZE + byte_addr] ^ (1 << bit_addr);
+			} else {
+				/* No need for correcting skipped header. */
+				if (i == 0 && byte_addr < 64) {
+					puts("Header corrupted. Ignoring...\n");
+					continue;
+				}
+				if (i == 0) {
+					((char*)page)[byte_addr - 64] =
+						((char*)page)[byte_addr - 64] ^ (1 << bit_addr);
+					dump_int(byte_addr - 64);
+				} else {
+					((char*)page)[(i - 1) * SECTOR_SIZE + 192 + byte_addr - 1] =
+						((char*)page)[(i - 1) * SECTOR_SIZE + 192 + byte_addr - 1]
+							^ (1 << bit_addr);
+					dump_int((i - 1) * SECTOR_SIZE + 192 + byte_addr - 1);
+				}
+			}
 
 		} else { /* Fail. */
 			return 0;
