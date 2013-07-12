@@ -1,12 +1,13 @@
-#define UART_BAUDRATE								115200
-#define CONFIG_SYS_NS16550_REG_SIZE	(-4)
+#define UART_BAUDRATE 115200
+#define CONFIG_SYS_NS16550_REG_SIZE (-4)
 
 #include <kirkwood.h>
 #include <ns16550.h>
 #include <nand.h>
-#include "ecc.h"
 
-#define NS16550_CLK									CONFIG_SYS_TCLK
+#include "ecc.c"
+
+#define NS16550_CLK CONFIG_SYS_TCLK
 static NS16550_t com_port = (NS16550_t)KW_UART0_BASE;
 
 int timer_init(void);
@@ -290,18 +291,20 @@ main(void)
 		}
 
 		/* Verifying ECC code */
-		if (!verify_ecc(load_addr + ptr - PAGE_SIZE + (page_num == IMG_START_PAGE ? 64 : 0),
-			oob, page_num == IMG_START_PAGE)) {
+		if (!verify_ecc(load_addr + ptr - PAGE_SIZE	 // Basic page start position
+			+ (page_num == IMG_START_PAGE ? 64 : 0), // If start page, shift right
+			oob, page_num == IMG_START_PAGE)) {	 // OOB address and start page
+
 			print_ecc_failure(page_num, oob);
 			for(;;);
 			return;
 		}
 
-		putc('\r');
-		puts("Page ");
+		puts("\rPage ");
 		dump_int(page_num - IMG_START_PAGE);
-		puts(" correct");
+		puts(" is correct");
 	}
+
 	puts("\nECC checking complete.\n\n");
 
 	void (*kernel_entry)(int, int, void *);
